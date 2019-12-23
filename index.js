@@ -36,8 +36,12 @@ const layoutAnimConfig = {
   update: {
     type: LayoutAnimation.Types.easeInEaseOut,
     property: LayoutAnimation.Properties.scaleXY,
+  },
+  delete: {
+    type: LayoutAnimation.Types.easeInEaseOut,
+    property: LayoutAnimation.Properties.scaleXY,
   }
-}
+};
 
 class SortableFlatList extends Component {
   _moveAnim = new Animated.Value(0)
