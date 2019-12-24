@@ -28,7 +28,7 @@ const initialState = {
 // Note using LayoutAnimation.easeInEaseOut() was causing blank spaces to
 // show up in list: https://github.com/facebook/react-native/issues/13207
 const layoutAnimConfig = {
-  duration: 300,
+  duration: 200,
   create: {
     type: LayoutAnimation.Types.easeInEaseOut,
     property: LayoutAnimation.Properties.scaleXY,
@@ -37,10 +37,6 @@ const layoutAnimConfig = {
     type: LayoutAnimation.Types.easeInEaseOut,
     property: LayoutAnimation.Properties.scaleXY,
   },
-  delete: {
-    type: LayoutAnimation.Types.easeInEaseOut,
-    property: LayoutAnimation.Properties.scaleXY,
-  }
 };
 
 class SortableFlatList extends Component {
@@ -75,14 +71,18 @@ class SortableFlatList extends Component {
     super(props)
     this._panResponder = PanResponder.create({
       onPanResponderGrant: (e, gestureState) => {
+        //console.log('onPanResponderGrant');
+
+        //clearTimeout(this.onLongPressTimeout);
+
         this.onLongPressTimeout = setTimeout(() => {
           const tappedRow = this._pixels[Math.floor(this._scrollOffset + gestureState.moveX)]
-
           //this.move(tappedRow);
-          console.log("ON LONG PRESS", tappedRow, gestureState);
+          //console.log("ON LONG PRESS", tappedRow, gestureState);
           // Определяем элементы по measure
-
+          this.move(tappedRow)
         }, 500);
+
       },
       onStartShouldSetPanResponderCapture: (evt, gestureState) => {
         const { pageX, pageY } = evt.nativeEvent
@@ -92,7 +92,7 @@ class SortableFlatList extends Component {
         if (tappedRow === undefined) return false
         this._additionalOffset = (tappedPixel + this._scrollOffset) - this._measurements[tappedRow][horizontal ? 'x' : 'y']
         if (this._releaseAnim) {
-          return false
+          //return false
         }
         this._moveAnim.setValue(tappedPixel)
         this._move = tappedPixel
@@ -110,37 +110,37 @@ class SortableFlatList extends Component {
           this._androidStatusBarOffset = (isTranslucent || isHidden) ? StatusBar.currentHeight : 0
         }
         this._offset.setValue((this._additionalOffset + this._containerOffset - this._androidStatusBarOffset) * -1)
-        return false
+
+        return true
       },
       onStartShouldSetPanResponder: () => true,
-      onShouldBlockNativeResponder: () => false,
-      onMoveShouldSetPanResponder: (evt, gestureState) => {
-        const { activeRow } = this.state
-        const { horizontal } = this.props
-        const { moveX, moveY } = gestureState
-        const move = horizontal ? moveX : moveY
-        const shouldSet = activeRow > -1
-        this._moveAnim.setValue(move)
-        if (shouldSet) {
-          // this.setState({ showHoverComponent: true })
-          // Kick off recursive row animation
-          this.animate()
-          this._hasMoved = true
-        }
-        return shouldSet;
-      },
+      onShouldBlockNativeResponder: () => true,
+      onMoveShouldSetPanResponderCapture: (evt, gestureState) => false,
+
       onPanResponderMove: Animated.event([null, { [props.horizontal ? 'moveX' : 'moveY']: this._moveAnim }], {
         listener: (evt, gestureState) => {
-
-          const { moveX, moveY } = gestureState
+          const { activeRow } = this.state
           const { horizontal } = this.props
+          const { moveX, moveY } = gestureState
+          const move = horizontal ? moveX : moveY
+          const shouldSet = activeRow > -1
+          this._moveAnim.setValue(move)
+
+          if (shouldSet) {
+            // this.setState({ showHoverComponent: true })
+            // Kick off recursive row animation
+            this.animate()
+            this._hasMoved = true
+          }
+          //const { moveX, moveY } = gestureState
+          //const { horizontal } = this.props
           this._move = horizontal ? moveX : moveY
         }
       }),
       onPanResponderTerminate: () => {
         clearTimeout(this.onLongPressTimeout);
       },
-      onPanResponderTerminationRequest: ({ nativeEvent }, gestureState) => false,
+      onPanResponderTerminationRequest: ({ nativeEvent }, gestureState) => true,
       onPanResponderRelease: () => {
         clearTimeout(this.onLongPressTimeout);
 
@@ -184,7 +184,6 @@ class SortableFlatList extends Component {
             toValue: 0,
           })
         ]);
-
 
         this._releaseAnim.start(this.onReleaseAnimationEnd);
       }
@@ -325,6 +324,10 @@ class SortableFlatList extends Component {
 
   move = (index) => {
     const { onMoveBegin } = this.props
+
+    if (index === undefined)
+      return false;
+
     if (this._releaseAnim) {
       this._releaseAnim.stop()
       this.onReleaseAnimationEnd()
@@ -366,9 +369,6 @@ class SortableFlatList extends Component {
           //hoverComponent,
         }, () => onMoveBegin && onMoveBegin(index)
     )
-
-
-
   }
 
   moveEnd = () => {
@@ -398,24 +398,24 @@ class SortableFlatList extends Component {
 
     return (
         <View style={[styles.fullOpacity, { flexDirection: horizontal ? 'row' : 'column' }]} >
-          {(isSpacerRow) && <View style={spacerStyle} />}
-          <RowItem
-              horizontal={horizontal}
-              index={index}
-              isActiveRow={isActiveRow}
-              renderItem={renderItem}
-              item={item}
-              setRef={this.setRef}
-              move={this.move}
-              onLoad={this.onLoad}
-              lastAnim={this.state.lastAnim}
-              moveEnd={this.moveEnd}
-              extraData={this.state.extraData}
-              loaded={this.state.loaded}
-          />
-          {endPadding && <View style={spacerStyle} />}
-        </View>
-    )
+    {(isSpacerRow) && <View style={spacerStyle} />}
+    <RowItem
+      horizontal={horizontal}
+      index={index}
+      isActiveRow={isActiveRow}
+      renderItem={renderItem}
+      item={item}
+      setRef={this.setRef}
+      move={this.move}
+      onLoad={this.onLoad}
+      lastAnim={this.state.lastAnim}
+      moveEnd={this.moveEnd}
+      extraData={this.state.extraData}
+      loaded={this.state.loaded}
+      />
+      {endPadding && <View style={spacerStyle} />}
+      </View>
+      )
   }
 
   renderHoverComponent = (hoverComponent,index) => {
@@ -424,11 +424,11 @@ class SortableFlatList extends Component {
     return (
         <Animated.View key={'hover-component-' + index} style={[
           {opacity: this.state.activeRow === index ? 1 : 0, width: this.state.activeRow === index ? 120 : 0, overflow: 'hidden'},
-          horizontal ? styles.hoverComponentHorizontal : styles.hoverComponentVertical,
-          { transform: [horizontal ? { translateX: this._hoverAnim } : { translateY: this._hoverAnim }, this._style] }]} >
-          {hoverComponent}
-        </Animated.View>
-    )
+      horizontal ? styles.hoverComponentHorizontal : styles.hoverComponentVertical,
+    { transform: [horizontal ? { translateX: this._hoverAnim } : { translateY: this._hoverAnim }, this._style] }]} >
+    {hoverComponent}
+  </Animated.View>
+  )
   }
 
   measureContainer = event => {
@@ -469,24 +469,24 @@ class SortableFlatList extends Component {
 
     return (
         <View
-            ref={ref => {this.containerView = ref}}
-            onLayout={this.measureContainer}
-            {...this._panResponder.panHandlers}
-            style={styles.wrapper} // Setting { opacity: 1 } fixes Android measurement bug: https://github.com/facebook/react-native/issues/18034#issuecomment-368417691
+    ref={ref => {this.containerView = ref}}
+    onLayout={this.measureContainer}
+    {...this._panResponder.panHandlers}
+    style={styles.wrapper} // Setting { opacity: 1 } fixes Android measurement bug: https://github.com/facebook/react-native/issues/18034#issuecomment-368417691
         >
-          <FlatList
-              {...this.props}
-              scrollEnabled={this.state.activeRow === -1}
-              ref={ref => this._flatList = ref}
-              renderItem={this.renderItem}
-              extraData={this.state}
-              keyExtractor={keyExtractor || this.keyExtractor}
-              onScroll={this.onScroll}
-              scrollEventThrottle={16}
-          />
-          {rendered}
-        </View>
-    )
+        <FlatList
+    {...this.props}
+    scrollEnabled={this.state.activeRow === -1}
+    ref={ref => this._flatList = ref}
+    renderItem={this.renderItem}
+    extraData={this.state}
+    keyExtractor={keyExtractor || this.keyExtractor}
+    onScroll={this.onScroll}
+    scrollEventThrottle={16}
+    />
+    {rendered}
+  </View>
+  )
   }
 }
 
@@ -524,11 +524,11 @@ class RowItem extends React.PureComponent {
     // Rendering the final row requires padding to be applied at the bottom
     return (
         <View ref={setRef(index)} collapsable={false} style={{ opacity: 1, flexDirection: horizontal ? 'row' : 'column' }}>
-          <View style={wrapperStyle}>
-            {component}
-          </View>
+  <View style={wrapperStyle}>
+        {component}
         </View>
-    )
+        </View>
+  )
   }
 }
 
